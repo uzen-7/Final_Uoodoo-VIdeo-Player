@@ -20,6 +20,9 @@
 #include <QVariant>
 #include <QStandardPaths>
 #include <QDebug>
+#include <QSettings>
+#include <QMenuBar>
+#include <QInputDialog>
 
 struct VideoEntry {
     QString name;
@@ -228,6 +231,12 @@ public:
         connect(searchBox, &QLineEdit::textChanged, this, &UooDooWindow::refreshList);
         connect(videoList, &QListWidget::itemClicked, this, &UooDooWindow::selectVideo);
 
+        // Menu: Settings -> Set Player
+        QMenu* menu = menuBar();
+        QMenu* settingsMenu = menu->addMenu("Settings");
+        QAction* setPlayer = settingsMenu->addAction("Set Player...");
+        connect(setPlayer, &QAction::triggered, this, &UooDooWindow::openSettings);
+
         refreshList();
     }
 
@@ -265,22 +274,64 @@ private slots:
         const auto items = libraryModel->all();
         for (const auto& item : items) {
             if (item.name == currentName) {
-                // Allow overriding the player via UOODOO_PLAYER env var.
-                QByteArray envPlayer = qgetenv("UOODOO_PLAYER");
+                // Helper to try a program and return whether it started
+                QStringList tried;
+                auto tryProg = [&](const QString &prog, const QStringList &args) -> bool {
+                    // Check availability via 'command -v'
+                    int rc = QProcess::execute("sh", QStringList() << "-c" << QString("command -v %1 > /dev/null 2>&1").arg(prog));
+                    qDebug() << "which" << prog << "rc=" << rc;
+                    if (rc != 0) return false;
+                    tried << prog;
+                    bool ok = QProcess::startDetached(prog, args);
+                    qDebug() << "startDetached(" << prog << "," << args << ") ->" << ok;
+                    return ok;
+                };
+
                 bool started = false;
+                // Preference order: UOODOO_PLAYER env var, saved QSettings player, defaults
+                QByteArray envPlayer = qgetenv("UOODOO_PLAYER");
                 if (!envPlayer.isEmpty()) {
-                    QString prog = QString::fromUtf8(envPlayer);
-                    started = QProcess::startDetached(prog, QStringList() << item.path);
-                } else {
-                    // Try launching Parole with -i (open new instance). If that fails, fall back to xdg-open.
-                    started = QProcess::startDetached("parole", QStringList() << "-i" << item.path);
-                    if (!started) {
-                        started = QProcess::startDetached("xdg-open", QStringList() << item.path);
+                    QString prog = QString::fromUtf8(envPlayer).trimmed();
+                    QStringList parts = prog.split(' ', Qt::SkipEmptyParts);
+                    QString p = parts.takeFirst();
+                    QStringList pargs = parts;
+                    pargs << item.path;
+                    started = tryProg(p, pargs);
+                }
+                if (!started) {
+                    QSettings s("UooDoo", "UooDooApp");
+                    QString saved = s.value("player").toString().trimmed();
+                    if (!saved.isEmpty()) {
+                        QStringList parts = saved.split(' ', Qt::SkipEmptyParts);
+                        QString p = parts.takeFirst();
+                        QStringList pargs = parts;
+                        pargs << item.path;
+                        started = tryProg(p, pargs);
                     }
                 }
-                statusLabel->setText(started ? "Launching playback" : "Failed to launch playback");
+                if (!started) started = tryProg("parole", QStringList() << "-i" << item.path);
+                if (!started) started = tryProg("xdg-open", QStringList() << item.path);
+
+                if (!started) {
+                    QString msg = "Failed to launch playback. Tried: ";
+                    msg += tried.join(", ");
+                    statusLabel->setText(msg);
+                } else {
+                    statusLabel->setText("Launching playback");
+                }
                 return;
             }
+        }
+    }
+
+    void openSettings() {
+        QSettings s("UooDoo", "UooDooApp");
+        QString current = s.value("player").toString();
+        bool ok = false;
+        QString text = QInputDialog::getText(this, "Set Player", "Player command (e.g. vlc --play-and-exit):", QLineEdit::Normal, current, &ok);
+        if (ok) {
+            s.setValue("player", text.trimmed());
+            statusLabel->setText(QString("Player saved: %1").arg(text));
         }
     }
 

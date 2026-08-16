@@ -1,0 +1,11 @@
+# Build artifacts
+/build/
+
+# Qt creator files
+*.pro.user
+
+# VS Code
+.vscode/
+
+# Python venv
+.venv/

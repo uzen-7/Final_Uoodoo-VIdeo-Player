@@ -1,1 +1,0 @@
-/usr/bin/c++ -Wl,--dependency-file=CMakeFiles/uoodoo_app.dir/link.d CMakeFiles/uoodoo_app.dir/src/main.cpp.o CMakeFiles/uoodoo_app.dir/src/LibraryManager.cpp.o -o uoodoo_app
