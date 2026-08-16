@@ -3,11 +3,7 @@
 A C++ video-library prototype.
 
 ## What it includes
-- Local video library management
-- Add/remove video entries
-- Favorite toggling
-- Metadata stored in a local text file (`library.txt`)
-- A console version, a Python GUI version, and a native Qt desktop version
+ - A console version and a native Qt desktop version
 
 ## Project Documentation
 - [ROOT_README.md](ROOT_README.md) — overview of the whole project

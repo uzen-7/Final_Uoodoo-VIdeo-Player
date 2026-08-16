@@ -265,8 +265,20 @@ private slots:
         const auto items = libraryModel->all();
         for (const auto& item : items) {
             if (item.name == currentName) {
-                QProcess::startDetached("xdg-open", {item.path});
-                statusLabel->setText("Launching playback");
+                // Allow overriding the player via UOODOO_PLAYER env var.
+                QByteArray envPlayer = qgetenv("UOODOO_PLAYER");
+                bool started = false;
+                if (!envPlayer.isEmpty()) {
+                    QString prog = QString::fromUtf8(envPlayer);
+                    started = QProcess::startDetached(prog, QStringList() << item.path);
+                } else {
+                    // Try launching Parole with -i (open new instance). If that fails, fall back to xdg-open.
+                    started = QProcess::startDetached("parole", QStringList() << "-i" << item.path);
+                    if (!started) {
+                        started = QProcess::startDetached("xdg-open", QStringList() << item.path);
+                    }
+                }
+                statusLabel->setText(started ? "Launching playback" : "Failed to launch playback");
                 return;
             }
         }
