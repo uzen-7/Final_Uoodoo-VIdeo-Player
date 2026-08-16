@@ -19,6 +19,12 @@ g++ -std=c++17 -I src src/main.cpp src/LibraryManager.cpp -o build/uoodoo_app
 ```
 
 ## Run
+2. Run the app normally: 
+./build/uoodoo_qt
+
+1. set a player for one-off:
+UOODOO_PLAYER=vlc ./build/uoodoo_qt
+
 
 ### Console demo
 ```bash
