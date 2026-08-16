@@ -1,0 +1,6 @@
+/home/ujjawal/Uoodoo Project/build/CMakeFiles/uoodoo_app.dir
+/home/ujjawal/Uoodoo Project/build/CMakeFiles/uoodoo_qt.dir
+/home/ujjawal/Uoodoo Project/build/CMakeFiles/uoodoo_test.dir
+/home/ujjawal/Uoodoo Project/build/CMakeFiles/test.dir
+/home/ujjawal/Uoodoo Project/build/CMakeFiles/edit_cache.dir
+/home/ujjawal/Uoodoo Project/build/CMakeFiles/rebuild_cache.dir

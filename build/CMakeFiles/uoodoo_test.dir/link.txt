@@ -1,0 +1,1 @@
+/usr/bin/c++ -Wl,--dependency-file=CMakeFiles/uoodoo_test.dir/link.d CMakeFiles/uoodoo_test.dir/tests/library_manager_test.cpp.o CMakeFiles/uoodoo_test.dir/src/LibraryManager.cpp.o -o uoodoo_test
