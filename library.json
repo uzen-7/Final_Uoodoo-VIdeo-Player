@@ -3,5 +3,20 @@
         "favorite": true,
         "name": "videoplayback.mp4",
         "path": "/home/ujjawal/Downloads/videoplayback.mp4"
+    },
+    {
+        "favorite": false,
+        "name": "2026-08-18 12-15-04.mp4",
+        "path": "/home/pujan/2026-08-18 12-15-04.mp4"
+    },
+    {
+        "favorite": false,
+        "name": "2026-08-18 12-15-24.mp4",
+        "path": "/home/pujan/2026-08-18 12-15-24.mp4"
+    },
+    {
+        "favorite": false,
+        "name": "crrc63.mp4",
+        "path": "/home/pujan/Downloads/crrc63.mp4"
     }
 ]
