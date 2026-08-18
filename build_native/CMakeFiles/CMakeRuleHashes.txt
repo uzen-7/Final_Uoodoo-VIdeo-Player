@@ -1,0 +1,7 @@
+# Hashes of file build rules.
+5558b373dd050fafcd2e5f08a92c76ac CMakeFiles/uoodoo_app_autogen
+5558b373dd050fafcd2e5f08a92c76ac CMakeFiles/uoodoo_qt_autogen
+5558b373dd050fafcd2e5f08a92c76ac CMakeFiles/uoodoo_test_autogen
+390cd87bd37dbea4cb47283ca91a48ac uoodoo_app_autogen/timestamp
+000b9c7025db2b607bfd635da7968428 uoodoo_qt_autogen/timestamp
+bd0e547a1b5da15df8b410ed606c68af uoodoo_test_autogen/timestamp

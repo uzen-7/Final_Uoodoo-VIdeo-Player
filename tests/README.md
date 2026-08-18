@@ -27,3 +27,18 @@ The tests protect the core features of UooDoo from breaking as the project grows
 3. The test adds a video entry and checks the result.
 4. The favorite flag is toggled and verified.
 5. The test finishes and reports success if everything passes.
+
+## Running Tests (CMake)
+
+If you built the project with CMake, run the tests via CTest from the build directory:
+
+```bash
+ctest --test-dir build
+```
+
+Or build and run the single test executable directly:
+
+```bash
+cmake --build build --target uoodoo_test
+./build/uoodoo_test
+```

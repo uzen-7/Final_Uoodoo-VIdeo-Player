@@ -30,3 +30,14 @@ Contains the working implementation of the library manager.
 ## Notes
 
 This part of the project represents the backend logic of UooDoo. It is independent from the GUI and can be reused by both console and graphical versions.
+
+### VideoPlayer.h / VideoPlayer.cpp
+Implements an integrated video player used by the Qt GUI. Key points:
+
+- `VideoPlayer` is a QWidget-based component that embeds `QVideoWidget` and `QMediaPlayer`.
+- API: `load(const QString& path)`, `play()`, `pause()`, `stop()`, `seek(qint64 ms)`, `toggleFullScreen()`.
+- Signals: `positionChangedMS(qint64)`, `durationChangedMS(qint64)`, and `progressUpdated(int)` for UI synchronization.
+- UI: a local `LocalSeekBar` for seeks, time label showing elapsed/total, playback buttons (Start/Play-Pause/Stop/Prev/Next/Fullscreen), and keyboard shortcuts.
+- Fullscreen: controls are reparented into the fullscreen video window so the overlay stays visible and auto-hides after 5s while playing.
+
+See `src/VideoPlayer.cpp` for implementation details and `uoodoo_qt.cpp` for how the player is integrated into the application UI.

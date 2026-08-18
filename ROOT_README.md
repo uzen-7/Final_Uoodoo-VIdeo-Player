@@ -18,6 +18,10 @@ UooDoo is a desktop-based video library system inspired by the proposal in the a
  - CMakeLists.txt: build configuration for the project
  - uoodoo_qt.cpp: native Qt-based graphical UI
 
+## Integrated Player
+
+The Qt UI now includes an internal `VideoPlayer` component (see `src/VideoPlayer.h` and `src/VideoPlayer.cpp`) which uses `QMediaPlayer` and `QVideoWidget`. The CMake configuration was updated to require `Qt6::Multimedia` and `Qt6::MultimediaWidgets` in addition to `Qt6::Widgets`.
+
 ### src/
 Contains the core library and logic for video management.
 

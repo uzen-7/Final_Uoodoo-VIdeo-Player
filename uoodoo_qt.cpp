@@ -24,105 +24,177 @@
 #include <QMenuBar>
 #include <QInputDialog>
 
-struct VideoEntry {
+#include "src/VideoPlayer.h"
+
+
+struct VideoEntry
+{
     QString name;
     QString path;
     bool favorite = false;
 };
 
-class LibraryModel {
+
+class LibraryModel
+{
 public:
-    LibraryModel(const QString& path = "library.json") : storagePath(path) {
+    LibraryModel(const QString& path = "library.json")
+    {
+        storagePath = path;
         load();
     }
 
-    bool addVideo(const QString& filePath) {
+    bool addVideo(const QString& filePath)
+    {
         QFileInfo info(filePath);
-        if (!info.exists() || !info.isFile()) return false;
-        QString ext = info.suffix().toLower();
-        QStringList allowed = {"mp4", "mkv", "avi", "mov", "wmv"};
-        if (!allowed.contains(ext)) return false;
-        for (const auto& item : videos) {
-            if (item.path == info.absoluteFilePath()) return false;
+
+        if (!info.exists() || !info.isFile())
+            return false;
+
+        QString extension = info.suffix().toLower();
+        QStringList allowedExtensions;
+        allowedExtensions << "mp4" << "mkv" << "avi" << "mov" << "wmv";
+
+        if (!allowedExtensions.contains(extension))
+            return false;
+
+        QString fullPath = info.absoluteFilePath();
+
+        for (const VideoEntry& video : videos)
+        {
+            if (video.path == fullPath)
+                return false;
         }
-        videos.push_back({info.fileName(), info.absoluteFilePath(), false});
+
+        VideoEntry video;
+        video.name = info.fileName();
+        video.path = fullPath;
+        video.favorite = false;
+
+        videos.push_back(video);
         save();
+
         return true;
     }
 
-    bool removeVideo(const QString& name) {
-        const auto before = videos.size();
-        QVector<VideoEntry> filtered;
-        for (const auto& item : videos) {
-            if (item.name != name) {
-                filtered.push_back(item);
-            }
+    bool removeVideo(const QString& name)
+    {
+        int oldSize = videos.size();
+        QVector<VideoEntry> newVideos;
+
+        for (const VideoEntry& video : videos)
+        {
+            if (video.name != name)
+                newVideos.push_back(video);
         }
-        videos = filtered;
-        if (videos.size() != before) {
+
+        videos = newVideos;
+
+        if (videos.size() != oldSize)
+        {
             save();
             return true;
         }
+
         return false;
     }
 
-    bool toggleFavorite(const QString& name) {
-        for (auto& item : videos) {
-            if (item.name == name) {
-                item.favorite = !item.favorite;
+    bool toggleFavorite(const QString& name)
+    {
+        for (VideoEntry& video : videos)
+        {
+            if (video.name == name)
+            {
+                video.favorite = !video.favorite;
                 save();
                 return true;
             }
         }
+
         return false;
     }
 
-    QVector<VideoEntry> search(const QString& query) const {
+    QVector<VideoEntry> search(const QString& query) const
+    {
         QVector<VideoEntry> result;
-        QString q = query.trimmed().toLower();
-        for (const auto& item : videos) {
-            if (q.isEmpty() || item.name.toLower().contains(q) || item.path.toLower().contains(q)) {
-                result.push_back(item);
+        QString searchText = query.trimmed().toLower();
+
+        for (const VideoEntry& video : videos)
+        {
+            if (searchText.isEmpty() ||
+                video.name.toLower().contains(searchText) ||
+                video.path.toLower().contains(searchText))
+            {
+                result.push_back(video);
             }
         }
+
         return result;
     }
 
-    const QVector<VideoEntry>& all() const { return videos; }
+    const QVector<VideoEntry>& all() const
+    {
+        return videos;
+    }
 
 private:
-    void load() {
+    void load()
+    {
         QFile file(storagePath);
-        if (!file.exists()) return;
-        if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) return;
+
+        if (!file.exists())
+            return;
+
+        if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+            return;
+
         QByteArray data = file.readAll();
         file.close();
-        QJsonParseError err;
-        QJsonDocument doc = QJsonDocument::fromJson(data, &err);
-        if (err.error != QJsonParseError::NoError || !doc.isArray()) return;
+
+        QJsonParseError error;
+        QJsonDocument document = QJsonDocument::fromJson(data, &error);
+
+        if (error.error != QJsonParseError::NoError || !document.isArray())
+            return;
+
         videos.clear();
-        for (const QJsonValue& value : doc.array()) {
-            if (!value.isObject()) continue;
-            QJsonObject obj = value.toObject();
-            VideoEntry entry;
-            entry.name = obj.value("name").toString();
-            entry.path = obj.value("path").toString();
-            entry.favorite = obj.value("favorite").toBool();
-            videos.push_back(entry);
+
+        for (const QJsonValue& value : document.array())
+        {
+            if (!value.isObject())
+                continue;
+
+            QJsonObject object = value.toObject();
+
+            VideoEntry video;
+            video.name = object.value("name").toString();
+            video.path = object.value("path").toString();
+            video.favorite = object.value("favorite").toBool();
+
+            videos.push_back(video);
         }
     }
 
-    void save() {
+    void save()
+    {
         QFile file(storagePath);
-        if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) return;
+
+        if (!file.open(QIODevice::WriteOnly | QIODevice::Text))
+            return;
+
         QJsonArray array;
-        for (const auto& item : videos) {
-            QJsonObject obj;
-            obj["name"] = item.name;
-            obj["path"] = item.path;
-            obj["favorite"] = item.favorite;
-            array.append(obj);
+
+        for (const VideoEntry& video : videos)
+        {
+            QJsonObject object;
+
+            object["name"] = video.name;
+            object["path"] = video.path;
+            object["favorite"] = video.favorite;
+
+            array.append(object);
         }
+
         file.write(QJsonDocument(array).toJson(QJsonDocument::Indented));
         file.close();
     }
@@ -131,279 +203,479 @@ private:
     QVector<VideoEntry> videos;
 };
 
-class UooDooWindow : public QMainWindow {
+
+class UooDooWindow : public QMainWindow
+{
 public:
-    UooDooWindow() {
+    UooDooWindow()
+    {
         setWindowTitle("UooDoo - Video Library");
         resize(1100, 720);
+
         setStyleSheet(R"(
-            QWidget { background: #07111f; color: #f8fafc; font-family: Segoe UI, Arial; }
-            QFrame, QLabel, QListWidget, QLineEdit, QPushButton, QProgressBar { background: transparent; }
-            QListWidget { background: #0f172a; border: 1px solid #1e293b; border-radius: 10px; padding: 6px; }
-            QLineEdit { background: #0f172a; border: 1px solid #1e293b; border-radius: 8px; padding: 8px; color: white; }
-            QPushButton { background: #2563eb; border: 1px solid #3b82f6; border-radius: 8px; padding: 10px 16px; }
-            QPushButton:hover { background: #1d4ed8; }
-            QLabel { color: #f8fafc; }
-            QProgressBar { border: 1px solid #1e293b; border-radius: 8px; text-align: center; }
-            QProgressBar::chunk { background-color: #22c55e; border-radius: 8px; }
+            QWidget {
+                background: #07111f;
+                color: #f8fafc;
+                font-family: Segoe UI, Arial;
+            }
+
+            QFrame, QLabel, QListWidget, QLineEdit, QPushButton, QProgressBar {
+                background: transparent;
+            }
+
+            QListWidget {
+                background: #0f172a;
+                border: 1px solid #1e293b;
+                border-radius: 10px;
+                padding: 6px;
+            }
+
+            QLineEdit {
+                background: #0f172a;
+                border: 1px solid #1e293b;
+                border-radius: 8px;
+                padding: 8px;
+                color: white;
+            }
+
+            QPushButton {
+                background: #2563eb;
+                border: 1px solid #3b82f6;
+                border-radius: 8px;
+                padding: 10px 16px;
+            }
+
+            QPushButton:hover {
+                background: #1d4ed8;
+            }
+
+            QLabel {
+                color: #f8fafc;
+            }
+
+            QProgressBar {
+                border: 1px solid #1e293b;
+                border-radius: 8px;
+                text-align: center;
+            }
+
+            QProgressBar::chunk {
+                background-color: #22c55e;
+                border-radius: 8px;
+            }
         )");
 
         libraryModel = new LibraryModel("library.json");
-        QWidget* central = new QWidget(this);
-        setCentralWidget(central);
-        QVBoxLayout* root = new QVBoxLayout(central);
 
-        QHBoxLayout* header = new QHBoxLayout();
+        QWidget* centralWidget = new QWidget(this);
+        setCentralWidget(centralWidget);
+
+        QVBoxLayout* rootLayout = new QVBoxLayout(centralWidget);
+
+        QHBoxLayout* headerLayout = new QHBoxLayout();
+
         QLabel* title = new QLabel("UooDoo");
         title->setStyleSheet("font-size: 24px; font-weight: 700;");
-        header->addWidget(title);
-        header->addStretch();
-        QLabel* subtitle = new QLabel("Interactive video library for local playback management");
-        subtitle->setStyleSheet("color: #7dd3fc; font-size: 11px;");
-        header->addWidget(subtitle);
-        root->addLayout(header);
+        headerLayout->addWidget(title);
 
-        QHBoxLayout* toolbar = new QHBoxLayout();
+        headerLayout->addStretch();
+
+        QLabel* subtitle = new QLabel(
+            "Interactive video library for local playback management"
+        );
+        subtitle->setStyleSheet("color: #7dd3fc; font-size: 11px;");
+        headerLayout->addWidget(subtitle);
+
+        rootLayout->addLayout(headerLayout);
+
+
+        QHBoxLayout* toolbarLayout = new QHBoxLayout();
+
         searchBox = new QLineEdit();
         searchBox->setPlaceholderText("Search videos...");
-        toolbar->addWidget(searchBox, 1);
-        addButton = new QPushButton("Add Video");
-        toolbar->addWidget(addButton);
-        favoriteButton = new QPushButton("Favorite");
-        toolbar->addWidget(favoriteButton);
-        removeButton = new QPushButton("Remove");
-        toolbar->addWidget(removeButton);
-        root->addLayout(toolbar);
+        toolbarLayout->addWidget(searchBox, 1);
 
-        QHBoxLayout* body = new QHBoxLayout();
-        QVBoxLayout* left = new QVBoxLayout();
+        addButton = new QPushButton("Add Video");
+        toolbarLayout->addWidget(addButton);
+
+        favoriteButton = new QPushButton("Favorite");
+        toolbarLayout->addWidget(favoriteButton);
+
+        removeButton = new QPushButton("Remove");
+        toolbarLayout->addWidget(removeButton);
+
+        rootLayout->addLayout(toolbarLayout);
+
+
+        QHBoxLayout* bodyLayout = new QHBoxLayout();
+
+        QVBoxLayout* leftLayout = new QVBoxLayout();
+
         QLabel* libraryLabel = new QLabel("Library");
         libraryLabel->setStyleSheet("font-size: 16px; font-weight: 600;");
-        left->addWidget(libraryLabel);
-        videoList = new QListWidget();
-        left->addWidget(videoList, 1);
-        body->addLayout(left, 1);
+        leftLayout->addWidget(libraryLabel);
 
-        QVBoxLayout* right = new QVBoxLayout();
+        videoList = new QListWidget();
+        leftLayout->addWidget(videoList, 1);
+
+        bodyLayout->addLayout(leftLayout, 1);
+
+
+        QVBoxLayout* rightLayout = new QVBoxLayout();
+
         QFrame* card = new QFrame();
-        card->setStyleSheet("background: #0f172a; border: 1px solid #1e293b; border-radius: 14px; padding: 12px;");
+        card->setStyleSheet(
+            "background: #0f172a; "
+            "border: 1px solid #1e293b; "
+            "border-radius: 14px; "
+            "padding: 12px;"
+        );
+
         QVBoxLayout* cardLayout = new QVBoxLayout(card);
+
         infoTitle = new QLabel("No video selected");
         infoTitle->setStyleSheet("font-size: 18px; font-weight: 600;");
         cardLayout->addWidget(infoTitle);
+
         infoPath = new QLabel("Select a video to preview it here.");
-        infoPath->setStyleSheet("color: #93c5fd; font-size: 11px; margin-bottom: 10px;");
+        infoPath->setStyleSheet(
+            "color: #93c5fd; font-size: 11px; margin-bottom: 10px;"
+        );
         infoPath->setWordWrap(true);
         cardLayout->addWidget(infoPath);
+
         statusLabel = new QLabel("Ready to add a video");
-        statusLabel->setStyleSheet("color: #fcd34d; font-size: 11px; font-weight: 600;");
+        statusLabel->setStyleSheet(
+            "color: #fcd34d; font-size: 11px; font-weight: 600;"
+        );
         cardLayout->addWidget(statusLabel);
 
-        QHBoxLayout* controlRow = new QHBoxLayout();
-        playButton = new QPushButton("Play");
-        controlRow->addWidget(playButton);
-        pauseButton = new QPushButton("Pause");
-        controlRow->addWidget(pauseButton);
-        stopButton = new QPushButton("Stop");
-        controlRow->addWidget(stopButton);
-        cardLayout->addLayout(controlRow);
 
-        progressBar = new QProgressBar();
-        progressBar->setRange(0, 100);
-        progressBar->setValue(20);
-        cardLayout->addWidget(progressBar);
+        // playback controls are embedded within the VideoPlayer widget now
+
+        // Embedded video player widget
+        videoPlayer = new VideoPlayer(this);
+        videoPlayer->setMinimumHeight(300);
+        cardLayout->addWidget(videoPlayer, 1);
+
+
+        // progress is shown inside the embedded player now
+
         cardLayout->addStretch();
-        right->addWidget(card, 1);
-        body->addLayout(right, 2);
-        root->addLayout(body, 1);
 
-        QLabel* footer = new QLabel("Inspired by the UooDoo proposal: upload, play, search, favorites, library management, and playback controls.");
+        rightLayout->addWidget(card, 1);
+        bodyLayout->addLayout(rightLayout, 2);
+
+        rootLayout->addLayout(bodyLayout, 1);
+
+
+        QLabel* footer = new QLabel(
+            "Inspired by the UooDoo proposal: upload, play, search, "
+            "favorites, library management, and playback controls."
+        );
         footer->setStyleSheet("color: #64748b; font-size: 10px;");
         footer->setWordWrap(true);
-        root->addWidget(footer);
+        rootLayout->addWidget(footer);
 
-        connect(addButton, &QPushButton::clicked, this, &UooDooWindow::addVideo);
-        connect(favoriteButton, &QPushButton::clicked, this, &UooDooWindow::toggleFavorite);
-        connect(removeButton, &QPushButton::clicked, this, &UooDooWindow::removeVideo);
-        connect(playButton, &QPushButton::clicked, this, &UooDooWindow::playSelected);
-        connect(pauseButton, &QPushButton::clicked, this, &UooDooWindow::pauseSelected);
-        connect(stopButton, &QPushButton::clicked, this, &UooDooWindow::stopSelected);
-        connect(searchBox, &QLineEdit::textChanged, this, &UooDooWindow::refreshList);
-        connect(videoList, &QListWidget::itemClicked, this, &UooDooWindow::selectVideo);
 
-        // Menu: Settings -> Set Player
-        QMenu* menu = menuBar();
-        QMenu* settingsMenu = menu->addMenu("Settings");
+        connect(addButton, &QPushButton::clicked,
+                this, &UooDooWindow::addVideo);
+
+        connect(favoriteButton, &QPushButton::clicked,
+                this, &UooDooWindow::toggleFavorite);
+
+        connect(removeButton, &QPushButton::clicked,
+                this, &UooDooWindow::removeVideo);
+
+        // play/pause/stop are handled by the embedded player now
+
+        connect(searchBox, &QLineEdit::textChanged,
+                this, &UooDooWindow::refreshList);
+
+        connect(videoList, &QListWidget::itemClicked,
+                this, &UooDooWindow::selectVideo);
+
+        // Wire player signals. VideoPlayer emits status messages.
+        connect(videoPlayer, &VideoPlayer::statusMessage,
+                this, [this](const QString& msg){
+                    if (msg == "next-request") { nextSelected(); return; }
+                    if (msg == "prev-request") { prevSelected(); return; }
+                    statusLabel->setText(msg);
+                });
+
+
+        QMenuBar* menuBarPtr = menuBar();
+        QMenu* settingsMenu = menuBarPtr->addMenu("Settings");
         QAction* setPlayer = settingsMenu->addAction("Set Player...");
-        connect(setPlayer, &QAction::triggered, this, &UooDooWindow::openSettings);
+
+        connect(setPlayer, &QAction::triggered,
+                this, &UooDooWindow::openSettings);
 
         refreshList();
     }
 
+
 private slots:
-    void addVideo() {
-        QString filePath = QFileDialog::getOpenFileName(this, "Choose a video", QDir::homePath(), "Video files (*.mp4 *.mkv *.avi *.mov *.wmv)");
-        if (filePath.isEmpty()) return;
-        if (libraryModel->addVideo(filePath)) {
+    void addVideo()
+    {
+        QString filePath = QFileDialog::getOpenFileName(
+            this,
+            "Choose a video",
+            QDir::homePath(),
+            "Video files (*.mp4 *.mkv *.avi *.mov *.wmv)"
+        );
+
+        if (filePath.isEmpty())
+            return;
+
+        if (libraryModel->addVideo(filePath))
+        {
             refreshList();
             statusLabel->setText("Video added to the library");
-        } else {
-            QMessageBox::warning(this, "UooDoo", "The selected file could not be added.");
+        }
+        else
+        {
+            QMessageBox::warning(
+                this,
+                "UooDoo",
+                "The selected file could not be added."
+            );
         }
     }
 
-    void removeVideo() {
-        if (currentName.isEmpty()) return;
-        if (libraryModel->removeVideo(currentName)) {
+
+    void removeVideo()
+    {
+        if (currentName.isEmpty())
+            return;
+
+        if (libraryModel->removeVideo(currentName))
+        {
             currentName.clear();
             refreshList();
             statusLabel->setText("Video removed");
         }
     }
 
-    void toggleFavorite() {
-        if (currentName.isEmpty()) return;
-        if (libraryModel->toggleFavorite(currentName)) {
+
+    void toggleFavorite()
+    {
+        if (currentName.isEmpty())
+            return;
+
+        if (libraryModel->toggleFavorite(currentName))
+        {
             refreshList();
             statusLabel->setText("Favorite state updated");
         }
     }
 
-    void playSelected() {
-        if (currentName.isEmpty()) return;
-        const auto items = libraryModel->all();
-        for (const auto& item : items) {
-            if (item.name == currentName) {
-                // Helper to try a program and return whether it started
-                QStringList tried;
-                auto tryProg = [&](const QString &prog, const QStringList &args) -> bool {
-                    // Check availability via 'command -v'
-                    int rc = QProcess::execute("sh", QStringList() << "-c" << QString("command -v %1 > /dev/null 2>&1").arg(prog));
-                    qDebug() << "which" << prog << "rc=" << rc;
-                    if (rc != 0) return false;
-                    tried << prog;
-                    bool ok = QProcess::startDetached(prog, args);
-                    qDebug() << "startDetached(" << prog << "," << args << ") ->" << ok;
-                    return ok;
-                };
 
-                bool started = false;
-                // Preference order: UOODOO_PLAYER env var, saved QSettings player, defaults
-                QByteArray envPlayer = qgetenv("UOODOO_PLAYER");
-                if (!envPlayer.isEmpty()) {
-                    QString prog = QString::fromUtf8(envPlayer).trimmed();
-                    QStringList parts = prog.split(' ', Qt::SkipEmptyParts);
-                    QString p = parts.takeFirst();
-                    QStringList pargs = parts;
-                    pargs << item.path;
-                    started = tryProg(p, pargs);
-                }
-                if (!started) {
-                    QSettings s("UooDoo", "UooDooApp");
-                    QString saved = s.value("player").toString().trimmed();
-                    if (!saved.isEmpty()) {
-                        QStringList parts = saved.split(' ', Qt::SkipEmptyParts);
-                        QString p = parts.takeFirst();
-                        QStringList pargs = parts;
-                        pargs << item.path;
-                        started = tryProg(p, pargs);
-                    }
-                }
-                if (!started) started = tryProg("parole", QStringList() << "-i" << item.path);
-                if (!started) started = tryProg("xdg-open", QStringList() << item.path);
+    void playSelected()
+    {
+        if (currentName.isEmpty())
+            return;
 
-                if (!started) {
-                    QString msg = "Failed to launch playback. Tried: ";
-                    msg += tried.join(", ");
-                    statusLabel->setText(msg);
-                } else {
-                    statusLabel->setText("Launching playback");
-                }
-                return;
-            }
+        const QVector<VideoEntry>& items = libraryModel->all();
+
+        for (const VideoEntry& video : items)
+        {
+            if (video.name != currentName)
+                continue;
+
+            // Load and play the selected video using the embedded player
+            videoPlayer->load(video.path);
+            videoPlayer->play();
+            return;
         }
     }
 
-    void openSettings() {
-        QSettings s("UooDoo", "UooDooApp");
-        QString current = s.value("player").toString();
+
+    void openSettings()
+    {
+        QSettings settings("UooDoo", "UooDooApp");
+
+        QString currentPlayer =
+            settings.value("player").toString();
+
         bool ok = false;
-        QString text = QInputDialog::getText(this, "Set Player", "Player command (e.g. vlc --play-and-exit):", QLineEdit::Normal, current, &ok);
-        if (ok) {
-            s.setValue("player", text.trimmed());
-            statusLabel->setText(QString("Player saved: %1").arg(text));
+
+        QString text = QInputDialog::getText(
+            this,
+            "Set Player",
+            "Player command (e.g. vlc --play-and-exit):",
+            QLineEdit::Normal,
+            currentPlayer,
+            &ok
+        );
+
+        if (ok)
+        {
+            settings.setValue("player", text.trimmed());
+
+            statusLabel->setText(
+                QString("Player saved: %1").arg(text)
+            );
         }
     }
 
-    void pauseSelected() {
-        statusLabel->setText("Paused");
+
+    void pauseSelected()
+    {
+        if (videoPlayer)
+        {
+            videoPlayer->pause();
+        }
     }
 
-    void stopSelected() {
-        statusLabel->setText("Stopped");
+
+    void stopSelected()
+    {
+        if (videoPlayer)
+        {
+            videoPlayer->stop();
+        }
     }
 
-    void refreshList() {
+    void nextSelected()
+    {
+        const QVector<VideoEntry>& items = libraryModel->all();
+        if (items.isEmpty() || currentName.isEmpty())
+            return;
+
+        int idx = -1;
+        for (int i=0;i<items.size();++i) if (items[i].name == currentName) { idx = i; break; }
+        if (idx < 0) return;
+        int next = (idx + 1) % items.size();
+        currentName = items[next].name;
+        updateDetails(currentName);
+        videoPlayer->load(items[next].path);
+        videoPlayer->play();
+    }
+
+    void prevSelected()
+    {
+        const QVector<VideoEntry>& items = libraryModel->all();
+        if (items.isEmpty() || currentName.isEmpty())
+            return;
+
+        int idx = -1;
+        for (int i=0;i<items.size();++i) if (items[i].name == currentName) { idx = i; break; }
+        if (idx < 0) return;
+        int prev = (idx - 1 + items.size()) % items.size();
+        currentName = items[prev].name;
+        updateDetails(currentName);
+        videoPlayer->load(items[prev].path);
+        videoPlayer->play();
+    }
+
+
+    void refreshList()
+    {
         videoList->clear();
-        const auto results = libraryModel->search(searchBox->text());
-        for (const auto& item : results) {
-            QString prefix = item.favorite ? "★ " : "• ";
-            QListWidgetItem* row = new QListWidgetItem(prefix + item.name);
-            row->setData(Qt::UserRole, item.name);
-            videoList->addItem(row);
+
+        QVector<VideoEntry> results =
+            libraryModel->search(searchBox->text());
+
+        for (const VideoEntry& video : results)
+        {
+            QString prefix;
+
+            if (video.favorite)
+                prefix = "★ ";
+            else
+                prefix = "• ";
+
+            QListWidgetItem* item =
+                new QListWidgetItem(prefix + video.name);
+
+            item->setData(Qt::UserRole, video.name);
+            videoList->addItem(item);
         }
-        if (!results.isEmpty()) {
-            if (currentName.isEmpty()) {
+
+
+        if (!results.isEmpty())
+        {
+            if (currentName.isEmpty())
                 currentName = results.first().name;
-            }
+
             updateDetails(currentName);
-        } else {
+        }
+        else
+        {
             currentName.clear();
+
             infoTitle->setText("No videos found");
-            infoPath->setText("Add a local video to start your library.");
+            infoPath->setText(
+                "Add a local video to start your library."
+            );
             statusLabel->setText("No media loaded");
-            progressBar->setValue(0);
         }
     }
 
-    void selectVideo(QListWidgetItem* item) {
+
+    void selectVideo(QListWidgetItem* item)
+    {
         currentName = item->data(Qt::UserRole).toString();
         updateDetails(currentName);
     }
 
-    void updateDetails(const QString& name) {
-        const auto items = libraryModel->all();
-        for (const auto& item : items) {
-            if (item.name == name) {
-                infoTitle->setText(item.name);
-                infoPath->setText(item.path);
-                statusLabel->setText(item.favorite ? "Favorite video" : "Ready to play");
-                progressBar->setValue(item.favorite ? 100 : 20);
+
+    void updateDetails(const QString& name)
+    {
+        const QVector<VideoEntry>& items = libraryModel->all();
+
+        for (const VideoEntry& video : items)
+        {
+            if (video.name == name)
+            {
+                infoTitle->setText(video.name);
+                infoPath->setText(video.path);
+
+                if (video.favorite)
+                {
+                    statusLabel->setText("Favorite video");
+                }
+                else
+                {
+                    statusLabel->setText("Ready to play");
+                }
+
                 return;
             }
         }
     }
 
+
 private:
     LibraryModel* libraryModel;
+
     QLineEdit* searchBox;
     QListWidget* videoList;
+
     QLabel* infoTitle;
     QLabel* infoPath;
     QLabel* statusLabel;
-    QProgressBar* progressBar;
+
+
     QPushButton* addButton;
     QPushButton* favoriteButton;
     QPushButton* removeButton;
-    QPushButton* playButton;
-    QPushButton* pauseButton;
-    QPushButton* stopButton;
+
+    // playback handled in `VideoPlayer` controls
+
+    VideoPlayer* videoPlayer;
+
     QString currentName;
 };
 
-int main(int argc, char** argv) {
+
+int main(int argc, char** argv)
+{
     QApplication app(argc, argv);
+
     UooDooWindow window;
     window.show();
+
     return app.exec();
 }

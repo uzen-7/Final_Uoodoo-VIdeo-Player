@@ -13,6 +13,19 @@ The project was implemented as a C++ video library system with:
 
 The goal was to convert the proposal idea into a practical and runnable C++ application.
 
+## Recent updates — Integrated VideoPlayer
+
+The Qt GUI was extended with an internal `VideoPlayer` implemented in `src/VideoPlayer.h` and `src/VideoPlayer.cpp`. This replaces launching external media apps and provides consistent in-app playback controls.
+
+Implementation highlights:
+
+- Uses Qt6 `QMediaPlayer` + `QVideoWidget` for playback and rendering.
+- Custom `LocalSeekBar` widget provides ticks, a draggable handle, and percent-based seeking.
+- Exposed API: `load(path)`, `play()`, `pause()`, `stop()`, `seek(ms)`, `toggleFullScreen()`; signals for position/duration/progress are emitted.
+- Fullscreen behavior: controls overlay auto-hides after 5s and reappears on mouse/keyboard. Controls are reparented into the video widget when entering fullscreen so they remain visible above the native fullscreen window.
+- Keyboard shortcuts implemented for common operations (Space, F, N, P, Left/Right).
+- Destructor and lifecycle fixes applied to avoid emitting signals during teardown.
+
 ## What was used
 
 ### C++
@@ -32,6 +45,8 @@ Responsibilities:
 The native desktop UI is implemented in:
 
 - uoodoo_qt.cpp
+
+The CMake configuration was updated to link `Qt6::Widgets`, `Qt6::Multimedia`, and `Qt6::MultimediaWidgets`. Ensure Qt6 is installed on your system when building the GUI.
 
 It provides a modern desktop interface with search, add/remove, favorites, and playback launch.
 

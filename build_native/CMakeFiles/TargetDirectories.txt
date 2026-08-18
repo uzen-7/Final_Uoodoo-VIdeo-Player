@@ -1,0 +1,12 @@
+/home/ujjawal/OOP projects/Uoodoo Final /Uoodoo Project Main/build_native/CMakeFiles/uoodoo_app.dir
+/home/ujjawal/OOP projects/Uoodoo Final /Uoodoo Project Main/build_native/CMakeFiles/uoodoo_qt.dir
+/home/ujjawal/OOP projects/Uoodoo Final /Uoodoo Project Main/build_native/CMakeFiles/uoodoo_test.dir
+/home/ujjawal/OOP projects/Uoodoo Final /Uoodoo Project Main/build_native/CMakeFiles/test.dir
+/home/ujjawal/OOP projects/Uoodoo Final /Uoodoo Project Main/build_native/CMakeFiles/edit_cache.dir
+/home/ujjawal/OOP projects/Uoodoo Final /Uoodoo Project Main/build_native/CMakeFiles/rebuild_cache.dir
+/home/ujjawal/OOP projects/Uoodoo Final /Uoodoo Project Main/build_native/CMakeFiles/uoodoo_app_autogen_timestamp_deps.dir
+/home/ujjawal/OOP projects/Uoodoo Final /Uoodoo Project Main/build_native/CMakeFiles/uoodoo_app_autogen.dir
+/home/ujjawal/OOP projects/Uoodoo Final /Uoodoo Project Main/build_native/CMakeFiles/uoodoo_qt_autogen_timestamp_deps.dir
+/home/ujjawal/OOP projects/Uoodoo Final /Uoodoo Project Main/build_native/CMakeFiles/uoodoo_qt_autogen.dir
+/home/ujjawal/OOP projects/Uoodoo Final /Uoodoo Project Main/build_native/CMakeFiles/uoodoo_test_autogen_timestamp_deps.dir
+/home/ujjawal/OOP projects/Uoodoo Final /Uoodoo Project Main/build_native/CMakeFiles/uoodoo_test_autogen.dir

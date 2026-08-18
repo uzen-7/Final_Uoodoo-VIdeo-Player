@@ -1,0 +1,6 @@
+set(__QT_DEPLOY_TARGET_uoodoo_app_FILE /home/ujjawal/OOP projects/Uoodoo Final /Uoodoo Project Main/build_native/uoodoo_app)
+set(__QT_DEPLOY_TARGET_uoodoo_app_TYPE EXECUTABLE)
+set(__QT_DEPLOY_TARGET_uoodoo_qt_FILE /home/ujjawal/OOP projects/Uoodoo Final /Uoodoo Project Main/build_native/uoodoo_qt)
+set(__QT_DEPLOY_TARGET_uoodoo_qt_TYPE EXECUTABLE)
+set(__QT_DEPLOY_TARGET_uoodoo_test_FILE /home/ujjawal/OOP projects/Uoodoo Final /Uoodoo Project Main/build_native/uoodoo_test)
+set(__QT_DEPLOY_TARGET_uoodoo_test_TYPE EXECUTABLE)
