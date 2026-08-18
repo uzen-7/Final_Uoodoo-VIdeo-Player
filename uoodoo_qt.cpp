@@ -210,60 +210,8 @@ public:
     UooDooWindow()
     {
         setWindowTitle("UooDoo - Video Library");
-        resize(1100, 720);
-
-        setStyleSheet(R"(
-            QWidget {
-                background: #07111f;
-                color: #f8fafc;
-                font-family: Segoe UI, Arial;
-            }
-
-            QFrame, QLabel, QListWidget, QLineEdit, QPushButton, QProgressBar {
-                background: transparent;
-            }
-
-            QListWidget {
-                background: #0f172a;
-                border: 1px solid #1e293b;
-                border-radius: 10px;
-                padding: 6px;
-            }
-
-            QLineEdit {
-                background: #0f172a;
-                border: 1px solid #1e293b;
-                border-radius: 8px;
-                padding: 8px;
-                color: white;
-            }
-
-            QPushButton {
-                background: #2563eb;
-                border: 1px solid #3b82f6;
-                border-radius: 8px;
-                padding: 10px 16px;
-            }
-
-            QPushButton:hover {
-                background: #1d4ed8;
-            }
-
-            QLabel {
-                color: #f8fafc;
-            }
-
-            QProgressBar {
-                border: 1px solid #1e293b;
-                border-radius: 8px;
-                text-align: center;
-            }
-
-            QProgressBar::chunk {
-                background-color: #22c55e;
-                border-radius: 8px;
-            }
-        )");
+        resize(1150, 760);
+        setMinimumSize(900, 600);
 
         libraryModel = new LibraryModel("library.json");
 
@@ -275,7 +223,7 @@ public:
         QHBoxLayout* headerLayout = new QHBoxLayout();
 
         QLabel* title = new QLabel("UooDoo");
-        title->setStyleSheet("font-size: 24px; font-weight: 700;");
+        title->setObjectName("appTitle");
         headerLayout->addWidget(title);
 
         headerLayout->addStretch();
@@ -283,7 +231,7 @@ public:
         QLabel* subtitle = new QLabel(
             "Interactive video library for local playback management"
         );
-        subtitle->setStyleSheet("color: #7dd3fc; font-size: 11px;");
+        subtitle->setObjectName("appSubtitle");
         headerLayout->addWidget(subtitle);
 
         rootLayout->addLayout(headerLayout);
@@ -292,10 +240,12 @@ public:
         QHBoxLayout* toolbarLayout = new QHBoxLayout();
 
         searchBox = new QLineEdit();
+        searchBox->setObjectName("search");
         searchBox->setPlaceholderText("Search videos...");
         toolbarLayout->addWidget(searchBox, 1);
 
         addButton = new QPushButton("Add Video");
+        addButton->setObjectName("primary");
         toolbarLayout->addWidget(addButton);
 
         favoriteButton = new QPushButton("Favorite");
@@ -312,10 +262,11 @@ public:
         QVBoxLayout* leftLayout = new QVBoxLayout();
 
         QLabel* libraryLabel = new QLabel("Library");
-        libraryLabel->setStyleSheet("font-size: 16px; font-weight: 600;");
+        libraryLabel->setObjectName("sectionTitle");
         leftLayout->addWidget(libraryLabel);
 
         videoList = new QListWidget();
+        videoList->setObjectName("videoList");
         leftLayout->addWidget(videoList, 1);
 
         bodyLayout->addLayout(leftLayout, 1);
@@ -324,30 +275,26 @@ public:
         QVBoxLayout* rightLayout = new QVBoxLayout();
 
         QFrame* card = new QFrame();
+        card->setObjectName("card");
         card->setStyleSheet(
-            "background: #0f172a; "
-            "border: 1px solid #1e293b; "
-            "border-radius: 14px; "
-            "padding: 12px;"
+            "QFrame#card { background: #111a2e; border: 1px solid #1e293b; border-radius: 16px; }"
         );
 
         QVBoxLayout* cardLayout = new QVBoxLayout(card);
+        cardLayout->setContentsMargins(16, 16, 16, 16);
+        cardLayout->setSpacing(8);
 
         infoTitle = new QLabel("No video selected");
-        infoTitle->setStyleSheet("font-size: 18px; font-weight: 600;");
+        infoTitle->setObjectName("videoTitle");
         cardLayout->addWidget(infoTitle);
 
         infoPath = new QLabel("Select a video to preview it here.");
-        infoPath->setStyleSheet(
-            "color: #93c5fd; font-size: 11px; margin-bottom: 10px;"
-        );
+        infoPath->setObjectName("muted");
         infoPath->setWordWrap(true);
         cardLayout->addWidget(infoPath);
 
         statusLabel = new QLabel("Ready to add a video");
-        statusLabel->setStyleSheet(
-            "color: #fcd34d; font-size: 11px; font-weight: 600;"
-        );
+        statusLabel->setObjectName("status");
         cardLayout->addWidget(statusLabel);
 
 
@@ -373,7 +320,7 @@ public:
             "Inspired by the UooDoo proposal: upload, play, search, "
             "favorites, library management, and playback controls."
         );
-        footer->setStyleSheet("color: #64748b; font-size: 10px;");
+        footer->setObjectName("muted");
         footer->setWordWrap(true);
         rootLayout->addWidget(footer);
 
@@ -618,6 +565,17 @@ private slots:
     {
         currentName = item->data(Qt::UserRole).toString();
         updateDetails(currentName);
+
+        const QVector<VideoEntry>& items = libraryModel->all();
+        for (const VideoEntry& video : items)
+        {
+            if (video.name == currentName)
+            {
+                videoPlayer->load(video.path);
+                videoPlayer->play();
+                return;
+            }
+        }
     }
 
 
@@ -673,6 +631,187 @@ private:
 int main(int argc, char** argv)
 {
     QApplication app(argc, argv);
+    app.setApplicationName("UooDoo");
+    app.setApplicationDisplayName("UooDoo - Video Library");
+    app.setStyleSheet(R"(
+        QWidget {
+            background: #0b1220;
+            color: #e2e8f0;
+            font-family: "Segoe UI", "Inter", Arial, sans-serif;
+            font-size: 13px;
+        }
+
+        QWidget#centralWidget, QMainWindow {
+            background: #0b1220;
+        }
+
+        QLabel {
+            background: transparent;
+        }
+
+        QLabel#appTitle {
+            font-size: 26px;
+            font-weight: 700;
+            color: #ffffff;
+            letter-spacing: 1px;
+        }
+
+        QLabel#appSubtitle {
+            color: #7dd3fc;
+            font-size: 11px;
+        }
+
+        QLabel#sectionTitle {
+            font-size: 15px;
+            font-weight: 600;
+            color: #f1f5f9;
+        }
+
+        QLabel#videoTitle {
+            font-size: 18px;
+            font-weight: 600;
+            color: #ffffff;
+        }
+
+        QLabel#muted {
+            color: #94a3b8;
+            font-size: 11px;
+        }
+
+        QLabel#status {
+            color: #fcd34d;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        QFrame#card {
+            background: #111a2e;
+            border: 1px solid #1e293b;
+            border-radius: 16px;
+        }
+
+        VideoPlayer {
+            background: #0f172a;
+            border-radius: 12px;
+        }
+
+        QWidget#playerControls {
+            background: transparent;
+        }
+
+        QLineEdit#search {
+            background: #0f172a;
+            border: 1px solid #1e293b;
+            border-radius: 10px;
+            padding: 9px 14px;
+            color: #f1f5f9;
+            selection-background-color: #2563eb;
+        }
+
+        QLineEdit#search:focus {
+            border: 1px solid #3b82f6;
+        }
+
+        QPushButton {
+            background: #1e293b;
+            color: #e2e8f0;
+            border: 1px solid #334155;
+            border-radius: 10px;
+            padding: 9px 16px;
+            font-weight: 600;
+        }
+
+        QPushButton:hover {
+            background: #2b3a52;
+        }
+
+        QPushButton:pressed {
+            background: #182333;
+        }
+
+        QPushButton#primary {
+            background: #2563eb;
+            border: 1px solid #3b82f6;
+            color: #ffffff;
+        }
+
+        QPushButton#primary:hover {
+            background: #1d4ed8;
+        }
+
+        QPushButton#primary:pressed {
+            background: #1e40af;
+        }
+
+        QListWidget#videoList {
+            background: #0f172a;
+            border: 1px solid #1e293b;
+            border-radius: 12px;
+            padding: 6px;
+            outline: none;
+        }
+
+        QListWidget#videoList::item {
+            border-radius: 8px;
+            padding: 8px 10px;
+            margin: 2px;
+            color: #cbd5e1;
+        }
+
+        QListWidget#videoList::item:hover {
+            background: #1e293b;
+            color: #f1f5f9;
+        }
+
+        QListWidget#videoList::item:selected {
+            background: #1e3a8a;
+            color: #ffffff;
+        }
+
+        QMenuBar {
+            background: #0b1220;
+            color: #cbd5e1;
+        }
+
+        QMenuBar::item:selected {
+            background: #1e293b;
+        }
+
+        QMenu {
+            background: #111a2e;
+            border: 1px solid #1e293b;
+            border-radius: 8px;
+            padding: 4px;
+        }
+
+        QMenu::item {
+            padding: 6px 22px;
+            border-radius: 6px;
+        }
+
+        QMenu::item:selected {
+            background: #1e3a8a;
+            color: #ffffff;
+        }
+
+        QMessageBox, QInputDialog {
+            background: #0f172a;
+        }
+
+        QProgressBar {
+            background: #1e293b;
+            border: none;
+            border-radius: 6px;
+            height: 10px;
+            text-align: center;
+            color: #cbd5e1;
+        }
+
+        QProgressBar::chunk {
+            background: #22c55e;
+            border-radius: 6px;
+        }
+    )");
 
     UooDooWindow window;
     window.show();

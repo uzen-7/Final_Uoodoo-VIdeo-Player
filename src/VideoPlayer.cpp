@@ -1,6 +1,7 @@
 #include "VideoPlayer.h"
 
 #include <QMediaPlayer>
+#include <QAudioOutput>
 #include <QVideoWidget>
 #include <QBoxLayout>
 #include <QUrl>
@@ -12,9 +13,6 @@
 #include <QShortcut>
 #include <QTime>
 #include <QHBoxLayout>
-#include <QTimer>
-#include <QPropertyAnimation>
-#include <QWindow>
 
 // Lightweight seek bar implemented as a local helper class.
 class LocalSeekBar : public QWidget
@@ -82,7 +80,7 @@ private:
 };
 
 VideoPlayer::VideoPlayer(QWidget* parent)
-    : QWidget(parent), m_player(new QMediaPlayer(this)), m_videoWidget(new QVideoWidget(this)), m_duration(0)
+    : QWidget(parent), m_player(new QMediaPlayer(this)), m_audioOutput(new QAudioOutput(this)), m_videoWidget(new QVideoWidget(this)), m_duration(0)
 {
     QVBoxLayout* layout = new QVBoxLayout(this);
     layout->setContentsMargins(4,4,4,4);
@@ -91,6 +89,7 @@ VideoPlayer::VideoPlayer(QWidget* parent)
 
     // Controls container inside player
     QWidget* controls = new QWidget(this);
+    controls->setObjectName("playerControls");
     QVBoxLayout* controlsLayout = new QVBoxLayout(controls);
     controlsLayout->setContentsMargins(6,6,6,6);
 
@@ -105,6 +104,7 @@ VideoPlayer::VideoPlayer(QWidget* parent)
 
     // playback control buttons (centralized in player)
     m_playBtn = new QPushButton(style()->standardIcon(QStyle::SP_MediaPlay), "Start", this);
+    m_playBtn->setObjectName("primary");
     m_pauseBtn = new QPushButton(style()->standardIcon(QStyle::SP_MediaPause), QString(), this);
     m_stopBtn = new QPushButton(style()->standardIcon(QStyle::SP_MediaStop), QString(), this);
     QPushButton* prevBtn = new QPushButton(style()->standardIcon(QStyle::SP_ArrowBack), QString(), this);
@@ -127,10 +127,32 @@ VideoPlayer::VideoPlayer(QWidget* parent)
     layout->addWidget(controls);
 
     m_player->setVideoOutput(m_videoWidget);
+    m_player->setAudioOutput(m_audioOutput);
 
     connect(m_player, &QMediaPlayer::positionChanged, this, &VideoPlayer::onPositionChanged);
     connect(m_player, &QMediaPlayer::durationChanged, this, &VideoPlayer::onDurationChanged);
     connect(m_player, &QMediaPlayer::playbackStateChanged, this, [this](QMediaPlayer::PlaybackState state){ onStateChanged(static_cast<int>(state)); });
+    connect(m_player, &QMediaPlayer::mediaStatusChanged, this, [this](QMediaPlayer::MediaStatus status){
+        if (status == QMediaPlayer::EndOfMedia)
+        {
+            // Rewind so the next play() restarts from the beginning instead of
+            // sitting at the end and immediately stopping.
+            m_pendingPlay = false;
+            m_player->setPosition(0);
+        }
+        else if (status == QMediaPlayer::BufferedMedia || status == QMediaPlayer::LoadedMedia)
+        {
+            if (m_pendingPlay)
+            {
+                m_pendingPlay = false;
+                m_player->play();
+            }
+        }
+    });
+    connect(m_player, &QMediaPlayer::errorOccurred, this, [this](QMediaPlayer::Error err, const QString& errorString){
+        m_pendingPlay = false;
+        emit statusMessage(QString("Playback error: %1").arg(errorString));
+    });
 
     // seek callback
     seekBar->setOnSeek([this](int percent){ if (m_duration>0) seek((m_duration*percent)/100); });
@@ -171,21 +193,8 @@ VideoPlayer::VideoPlayer(QWidget* parent)
     connect(seekRight, &QShortcut::activated, this, [this](){ qint64 pos = qMin<qint64>(m_duration, m_player->position() + 5000); seek(pos); });
 
     m_videoWidget->installEventFilter(this);
-    // enable mouse move events
     m_videoWidget->setMouseTracking(true);
     this->setMouseTracking(true);
-
-    // hide timer + animation for fullscreen overlay
-    m_hideTimer = new QTimer(this);
-    m_hideTimer->setSingleShot(true);
-    m_hideTimer->setInterval(m_controlsHideDelayMs);
-    connect(m_hideTimer, &QTimer::timeout, this, &VideoPlayer::hideControls);
-
-    m_hideAnimation = new QPropertyAnimation(m_controls);
-    m_hideAnimation->setPropertyName("windowOpacity");
-    m_hideAnimation->setDuration(300);
-    m_controlsVisible = true;
-    m_controlsOriginalParent = m_controls->parentWidget();
 }
 
 VideoPlayer::~VideoPlayer()
@@ -197,6 +206,8 @@ VideoPlayer::~VideoPlayer()
 void VideoPlayer::load(const QString& path)
 {
     stop();
+    m_pendingPlay = false;
+    m_player->setSource(QUrl());
     QUrl url = QUrl::fromLocalFile(path);
     m_player->setSource(url);
     emit statusMessage(QString("Loaded: %1").arg(path));
@@ -204,11 +215,12 @@ void VideoPlayer::load(const QString& path)
 
 void VideoPlayer::play()
 {
-    if (!m_player->source().isEmpty())
-    {
-        m_player->play();
-        emit statusMessage("Playing");
-    }
+    if (m_player->source().isEmpty())
+        return;
+
+    m_pendingPlay = true;
+    m_player->play();
+    emit statusMessage("Playing");
 }
 
 void VideoPlayer::pause()
@@ -250,13 +262,6 @@ void VideoPlayer::onPositionChanged(qint64 pos)
             LocalSeekBar* s = dynamic_cast<LocalSeekBar*>(m_seekBar);
             if (s) s->setPercent(percent);
         }
-
-        // If in fullscreen and playing, ensure controls auto-hide
-        if (m_videoWidget && m_videoWidget->isFullScreen())
-        {
-            if (m_player->playbackState() == QMediaPlayer::PlayingState)
-                m_hideTimer->start();
-        }
     }
 }
 
@@ -281,104 +286,47 @@ void VideoPlayer::onStateChanged(int state)
 
 void VideoPlayer::toggleFullScreen()
 {
-    if (m_videoWidget)
+    if (!isFullScreen())
     {
-        bool fs = !m_videoWidget->isFullScreen();
-        m_videoWidget->setFullScreen(fs);
-
-        if (fs)
+        // Remember where we live so we can be restored later.
+        if (parentWidget() && parentWidget()->layout())
         {
-            // when entering full screen, ensure controls visible and start hide timer
-            // reparent controls into the video widget so they overlay fullscreen window
-            if (m_controls && m_videoWidget)
-            {
-                m_controlsOriginalParent = m_controls->parentWidget();
-                m_controls->setParent(m_videoWidget);
-                m_controls->setWindowFlags(Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint);
-                m_controls->setAttribute(Qt::WA_TranslucentBackground, true);
-                m_controls->show();
-                // position at bottom
-                QRect vr = m_videoWidget->rect();
-                int h = m_controls->sizeHint().height();
-                m_controls->setGeometry(0, vr.height() - h - 10, vr.width(), h);
-            }
+            QLayout* lay = parentWidget()->layout();
+            m_layoutBackup = qobject_cast<QBoxLayout*>(lay);
+            if (m_layoutBackup)
+                m_layoutIndex = m_layoutBackup->indexOf(this);
+            lay->removeWidget(this);
+        }
 
-            showControls();
-            if (m_hideTimer) m_hideTimer->start();
-        }
-        else
+        setParent(nullptr);
+        setWindowFlags(Qt::Window | Qt::FramelessWindowHint);
+        showFullScreen();
+        m_videoWidget->setFocus();
+    }
+    else
+    {
+        showNormal();
+        setWindowFlags(Qt::Widget);
+
+        if (m_layoutBackup)
         {
-            // leaving fullscreen: show controls permanently
-            // restore parent and layout
-            if (m_controls)
-            {
-                m_controls->setParent(this);
-                m_controls->setWindowFlags(Qt::Widget);
-                m_controls->show();
-                if (this->layout()) this->layout()->addWidget(m_controls);
-            }
-            showControls();
-            if (m_hideTimer) m_hideTimer->stop();
+            m_layoutBackup->insertWidget(m_layoutIndex, this, 1);
+            m_layoutBackup = nullptr;
+            m_layoutIndex = -1;
         }
+
+        show();
+        m_videoWidget->setFocus();
     }
 }
 
 bool VideoPlayer::eventFilter(QObject* watched, QEvent* event)
 {
-    if (watched == m_videoWidget)
+    if (watched == m_videoWidget && event->type() == QEvent::MouseButtonDblClick)
     {
-        if (event->type() == QEvent::MouseButtonDblClick)
-        {
-            toggleFullScreen();
-            return true;
-        }
-
-        if (event->type() == QEvent::MouseMove)
-        {
-            // show controls on mouse movement
-            showControls();
-            if (m_hideTimer && m_videoWidget->isFullScreen())
-                m_hideTimer->start();
-        }
-        if (event->type() == QEvent::Resize)
-        {
-            // reposition overlay controls when the video widget resizes in fullscreen
-            if (m_videoWidget->isFullScreen() && m_controls)
-            {
-                QRect vr = m_videoWidget->rect();
-                int h = m_controls->sizeHint().height();
-                m_controls->setGeometry(0, vr.height() - h - 10, vr.width(), h);
-            }
-        }
+        toggleFullScreen();
+        return true;
     }
+
     return QWidget::eventFilter(watched, event);
-}
-
-void VideoPlayer::showControls()
-{
-    if (!m_controls) return;
-    if (m_hideAnimation && m_hideAnimation->state() == QPropertyAnimation::Running)
-        m_hideAnimation->stop();
-    m_controls->setWindowOpacity(1.0);
-    m_controls->show();
-    m_controlsVisible = true;
-}
-
-void VideoPlayer::hideControls()
-{
-    if (!m_controls) return;
-    if (!m_videoWidget->isFullScreen()) return;
-    if (m_hideAnimation)
-    {
-        m_hideAnimation->stop();
-        m_hideAnimation->setStartValue(1.0);
-        m_hideAnimation->setEndValue(0.0);
-        m_hideAnimation->start();
-        m_controlsVisible = false;
-    }
-    else
-    {
-        m_controls->hide();
-        m_controlsVisible = false;
-    }
 }

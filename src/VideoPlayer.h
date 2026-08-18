@@ -4,10 +4,10 @@
 
 class QMediaPlayer;
 class QVideoWidget;
+class QAudioOutput;
 class QPushButton;
 class QLabel;
-class QTimer;
-class QPropertyAnimation;
+class QBoxLayout;
 
 class VideoPlayer : public QWidget
 {
@@ -24,45 +24,34 @@ public:
     void seek(qint64 positionMs);
     void toggleFullScreen();
 
-    // expose video widget for shortcut parenting if needed
     QVideoWidget* videoWidget() const { return m_videoWidget; }
 
 signals:
     void statusMessage(const QString& msg);
     void progressUpdated(int percent);
+    void positionChangedMS(qint64 pos);
+    void durationChangedMS(qint64 dur);
 
 private slots:
     void onPositionChanged(qint64 pos);
     void onDurationChanged(qint64 dur);
     void onStateChanged(int state);
 
-signals:
-    void positionChangedMS(qint64 pos);
-    void durationChangedMS(qint64 dur);
-private:
 protected:
     bool eventFilter(QObject* watched, QEvent* event) override;
 
-    void showControls();
-    void hideControls();
-
 private:
     QMediaPlayer* m_player;
+    QAudioOutput* m_audioOutput;
     QVideoWidget* m_videoWidget;
-    qint64 m_duration;
+    qint64 m_duration = 0;
     QPushButton* m_playBtn;
     QPushButton* m_pauseBtn;
     QPushButton* m_stopBtn;
     QWidget* m_controls;
     QWidget* m_seekBar;
     QLabel* m_timeLabel;
-    QTimer* m_hideTimer;
-    QPropertyAnimation* m_hideAnimation;
-    bool m_controlsVisible = true;
-    int m_controlsHideDelayMs = 5000;
-    // fullscreen overlay
-    QWidget* m_fullscreenOverlay = nullptr;
-    QWidget* m_overlaySeekBar = nullptr;
-    QLabel* m_overlayTimeLabel = nullptr;
-    QWidget* m_controlsOriginalParent = nullptr;
+    QBoxLayout* m_layoutBackup = nullptr;
+    int m_layoutIndex = -1;
+    bool m_pendingPlay = false;
 };
